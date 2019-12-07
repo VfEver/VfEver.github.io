@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="教程,MySQL," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="MySQL中的事务事务会把数据库从一种一致状态转换为另一种一致状态。在数据库提交工作时，可以确保要么所有修改都已经保存了，要么所有修改都不保存，是访问并更新数据库中各种数据项的一个执行单元。 事务的特性：ACIDA（Atomicity）原子性原子性是指整个数据库事务是不可分割的工作单元，即要么都做，要么都不做。事务中任何一个SQL语句执行失败，已经执行成功的SQL语句也必须撤销，数据库状态应该退回">
+<meta name="keywords" content="教程,MySQL">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MySQL事务">
+<meta property="og:url" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;03&#x2F;30&#x2F;MySql%E4%BA%8B%E5%8A%A1&#x2F;index.html">
+<meta property="og:site_name" content="Code">
+<meta property="og:description" content="MySQL中的事务事务会把数据库从一种一致状态转换为另一种一致状态。在数据库提交工作时，可以确保要么所有修改都已经保存了，要么所有修改都不保存，是访问并更新数据库中各种数据项的一个执行单元。 事务的特性：ACIDA（Atomicity）原子性原子性是指整个数据库事务是不可分割的工作单元，即要么都做，要么都不做。事务中任何一个SQL语句执行失败，已经执行成功的SQL语句也必须撤销，数据库状态应该退回">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;03&#x2F;30&#x2F;MySql%E4%BA%8B%E5%8A%A1&#x2F;locktree.PNG">
+<meta property="og:updated_time" content="2019-12-03T17:04:53.967Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;03&#x2F;30&#x2F;MySql%E4%BA%8B%E5%8A%A1&#x2F;locktree.PNG">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2019/03/30/MySql事务/"/>
+
+
+
+
+
+  <title>MySQL事务 | Code</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Code</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">Code</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br />
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-question-circle"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" target="_blank" rel="noopener" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br />
+            
+            搜索
+          </a>
+        </li>
+      
+    </ul>
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off"
+             placeholder="搜索..." spellcheck="false"
+             type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/03/30/MySql%E4%BA%8B%E5%8A%A1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Jensen">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/head.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Code">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">MySQL事务</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-03-30T22:36:36+08:00">
+                2019-03-30
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index">
+                    <span itemprop="name">技术</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h3 id="MySQL中的事务"><a href="#MySQL中的事务" class="headerlink" title="MySQL中的事务"></a>MySQL中的事务</h3><p>事务会把数据库从一种一致状态转换为另一种一致状态。在数据库提交工作时，可以确保要么所有修改都已经保存了，要么所有修改都不保存，是访问并更新数据库中各种数据项的一个执行单元。</p>
+<h3 id="事务的特性：ACID"><a href="#事务的特性：ACID" class="headerlink" title="事务的特性：ACID"></a>事务的特性：ACID</h3><h4 id="A（Atomicity）原子性"><a href="#A（Atomicity）原子性" class="headerlink" title="A（Atomicity）原子性"></a>A（Atomicity）原子性</h4><p>原子性是指整个数据库事务是不可分割的工作单元，即要么都做，要么都不做。事务中任何一个SQL语句执行失败，已经执行成功的SQL语句也必须撤销，数据库状态应该退回到执行事务前的状态。</p>
+<h4 id="C（consistency）一致性"><a href="#C（consistency）一致性" class="headerlink" title="C（consistency）一致性"></a>C（consistency）一致性</h4><p>一致性指事务将数据库从一种状态转变为下一种一致的状态，在事务开始之前和事务结束以后，数据库的完整性约束没有被破坏。</p>
+<h4 id="I（isolation）隔离性"><a href="#I（isolation）隔离性" class="headerlink" title="I（isolation）隔离性"></a>I（isolation）隔离性</h4><p>事物的隔离性要求每个读写事物的对象对其他事物的操作对象能互相分离，即该事务提交前对其他事物都不可见，通常使用锁来实现。</p>
+<h4 id="D（durability）持久性"><a href="#D（durability）持久性" class="headerlink" title="D（durability）持久性"></a>D（durability）持久性</h4><p>事务一旦提交，其结果就是永久性的。即使发生宕机，数据库也能将数据恢复。</p>
+<h3 id="事务的实现"><a href="#事务的实现" class="headerlink" title="事务的实现"></a>事务的实现</h3><h4 id="事务隔离性的实现"><a href="#事务隔离性的实现" class="headerlink" title="事务隔离性的实现"></a>事务隔离性的实现</h4><p>MySQL通过锁实现了事务隔离性特性。</p>
+<h5 id="锁的定义"><a href="#锁的定义" class="headerlink" title="锁的定义"></a>锁的定义</h5><p>锁是数据库系统区别于文件系统的一个关键特性。锁机制用于管理对共享资源的并发访问。</p>
+<h5 id="锁的类型"><a href="#锁的类型" class="headerlink" title="锁的类型"></a>锁的类型</h5><p>InnoDB存储引擎支持行级锁，实现了两种类型的行级锁：</p>
+<ul>
+<li>共享锁（S Lock），允许事务读取一行数据。</li>
+<li>排他锁（X Lock），允许事务删除或更新一行数据。</li>
+</ul>
+<p>如果一个事务T1已经获得了行r的共享锁，那么另外的事务T2可以立即获得行r的共享锁，因为读取并没有改变行r的数据，称这种情况为锁兼容。如果事务T3想获得行r的排他锁，则其必须等待事务T1、T2释放行r上的共享锁——共享锁和排他锁不兼容。兼容性如下：</p>
+<p> | X | S<br>-|-|-<br>X | 不兼容 | 不兼容<br>S | 不兼容 | 兼容<br>X锁与其他都不兼容，只有S锁相互兼容，S、X锁都是行级锁。</p>
+<p>InnoDB存储引擎支持多粒度锁定，这种锁定允许事务在行级上的锁和表级上的锁同时存在。为了支持在不同粒度上进行加锁操作，InnoDB存储引擎支持一个额外的锁方式，称之为意向锁/意向锁是指将锁定的对象分为多个层次，意向锁意味着事务希望在更细粒度上进行加锁。若将上锁的对象看成一棵树，对最底层行级别加锁，首先需要对上层粗粒度的对象（数据库、表）加意向锁。<img src="/2019/03/30/MySql%E4%BA%8B%E5%8A%A1/locktree.PNG" alt="层次结构"></p>
+<p>比如针对记录r加X锁，需要分别对数据库A，表、页上加意向锁IX，最后对记录r上X锁。若其中任何一个部分导致等待，那么该操作需要等待粗粒度锁的完成。举例：在对记录r加X锁之前，已经有事务对表1进行了S表锁，那么表1上已经存在S锁，之后事务需要对记录r在表1上加IX，由于不兼容，所以该事务需要等待表锁操作的完成。</p>
+<p>InnoDB存储引擎支持意向锁设计比较简单，意向锁即为表级别的锁。设计目的主要是为了在一个事物中解析下一行将被请求的锁类型。所支持的两种意向锁如下：</p>
+<ul>
+<li>意向共享锁（IS Lock），事务想要获得一张表中某几行的共享锁</li>
+<li>意向排他锁（IX Lock），事务想要获得一张表中某几行的排他锁</li>
+</ul>
+<p>表级意向锁与行级意向锁兼容性如下：</p>
+<table>
+<thead>
+<tr>
+<th>IS</th>
+<th>IX</th>
+<th>S</th>
+<th>X</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>IS</td>
+<td>兼容</td>
+<td>兼容</td>
+<td>兼容</td>
+</tr>
+<tr>
+<td>IX</td>
+<td>兼容</td>
+<td>兼容</td>
+<td>不兼容</td>
+</tr>
+<tr>
+<td>S</td>
+<td>兼容</td>
+<td>不兼容</td>
+<td>兼容</td>
+</tr>
+<tr>
+<td>X</td>
+<td>不兼容</td>
+<td>不兼容</td>
+<td>不兼容</td>
+</tr>
+</tbody></table>
+<h5 id="一致性非锁定读"><a href="#一致性非锁定读" class="headerlink" title="一致性非锁定读"></a>一致性非锁定读</h5><p> MySQL通过行多版本控制的方式来实现一致性的非锁定读。读取正在进行update或者delete的数据行时，实际上读取的此行的快照数据，从而避免了其他事物锁定当前行的情况下读等待（等待行锁的释放）的情况。非锁定读极大地提高了数据库的并发性，读取不会占用和等待表上的锁。但是在不同的事务隔离级别下，读取的方式不同，并不是在每个事务隔离级别下都是采用非锁定的一致性读。即使都是使用非锁定的一致性读，但是对于快照数据的定义也各不相同。</p>
+<p> 快照数据其实就是当前行数据之前的历史版本，每行记录可能有多个版本，称之为行多版本技术。由此带来的并发控制称之为多版本并发控制。</p>
+<p> 在事务隔离级别READ COMMITTED和REPEATABLE READ下，InnoDB存储引擎使用非锁定的一致性读。然而对于快照数据的定义不相同：在READ COMMITTED隔离级别下，非一致性读总是读取被锁定行的最新一份快照数据；在REPEATABLE READ事务隔离级别下，对于快照数据，非一致性读总是读取事务开始时的行数据版本。</p>
+<p> MVCC（多版本并发控制）和MySQL事务隔离级别，将专门介绍。</p>
+<h5 id="一致性锁定度"><a href="#一致性锁定度" class="headerlink" title="一致性锁定度"></a>一致性锁定度</h5><p> MySQL的InnoDB存储引擎默认的隔离级别为REPEATABLE READ，select操作使用一致性非锁定读。某些情况下，用户需要显示地针对数据库读取操作进行加锁保证数据逻辑的一致性。InnoDB存储引擎对于select语句支持两种一致性的锁定读操作：</p>
+<ul>
+<li><p>select … for update</p>
+</li>
+<li><p>select … lock in share mode  </p>
+<p>select … for update对读取的行记录加一个X锁，其他事务不能对已锁定的行加上任何锁。select … lock in share mode读读取的行记录加一个S锁，其他事物可以向被锁定的行加S锁，如果加X锁，将会被阻塞。</p>
+<p>对于一致性非锁定读，即使读取的行已经被执行了 select … for update，也是可以进行读取的。select … for update和select … lock in share mode必须在一个事务中，事务提交了，锁也就释放了。</p>
+</li>
+</ul>
+<h5 id="锁的算法"><a href="#锁的算法" class="headerlink" title="锁的算法"></a>锁的算法</h5><ol>
+<li>Record Lock：单个行记录上的锁<br>Record Lock总是会去锁住索引记录，如果InnoDB存储引擎表在建立的时候没有设置任何一个索引，那么这时InnoDB存储引擎会使用隐式的主键来进行锁定。</li>
+<li>Gap Lock：间隙所，锁定一个范围，但不包含记录本身  </li>
+<li>Next-Key Lock：Gap Lock+Record Lock，锁定一个范围，并且锁定记录本身<br>Next-Key Lock结合了Gap Lock和Record Lock的一种锁定算法，设计的目的是为了解决幻读（以后介绍）。当查询的索引含有唯一属性时，InnoDB存储引擎会对Next-Key Lock进行优化，将其降级为Record Lock，即仅锁住索引本身，而不是范围。</li>
+</ol>
+<h5 id="锁问题"><a href="#锁问题" class="headerlink" title="锁问题"></a>锁问题</h5><ol>
+<li>脏读<br>提到脏读，就涉及到脏数据和脏页的概念。脏页指的是在缓冲池中已经被修改的页，但是还没有刷新到磁盘中，即数据库实例内存中的页和磁盘中的页的数据是不一致的。在刷新到磁盘之前，日志都已经被写入到了重做日志文件。脏数据是指事务对缓冲池中行记录的修改，并且还没有被提交。<br>对于脏页的读取，是正确的。脏页是指数据库实例内存和磁盘的异步造成的，不会影响数据的一致性（脏页最终都会刷新到磁盘中）。<br>脏数据是指未提交的数据，也就是两个事务，其中一个事务对数据进行了修改但是还未提交，另一个事务读取了未提交的数据。这就违反了数据库的隔离性。</li>
+<li>不可重复读<br>不可重复读是指在同一个事务多次读取同一数据集合，结果集有差异的情况。两个事务，其中一个事务访问了一个数据集合，另一个事务同样也访问了同一个数据集合，并做了一些DML操作。第一个事务在进行读取时，返回了与第一次不一致的结果，这就发生了在同一个事务内两次读到的数据是不一样的情况。这就是不可重复读。<br>脏读是读取到未提交的数据，不可重复读读到的是已经提交的数据，但是违反了数据库事务一致性的要求。</li>
+<li>幻读<br>幻读是指在同一事务下，连续执行两次同样的SQL语句可能导致不同的结果，第二次的SQL语句可能会返回之前不存在的行。幻读主要是针对读取结果条目数不同。</li>
+<li>更新丢失<br>更新丢失就是一个事物的更新操作会被另一个事物的更新操作所覆盖，从而导致数据的不一致。</li>
+</ol>
+<h5 id="死锁"><a href="#死锁" class="headerlink" title="死锁"></a>死锁</h5><p>死锁是指两个或两个以上的事务在执行过程中，因争夺资源而造成的一种互相等待的现象。如果没有外力介入，事务都将无法推进下去。针对死锁问题，有两种解决方案：  </p>
+<ol>
+<li>死锁检测<br>数据库一般采用wait-for graph（等待图）的方式来进行死锁检测，这是一种比较积极主动的死锁检测方式，起到了一个预防的作用。数据库会保存两种信息：1，锁的信息链表；2，事务等待链表。这两种链表可以构造一张图，若存在回路，就代表存在死锁，因此资源间互相发生等待。每个事务请求锁并发生等待时都会判断是否存在回路，若存在则有死锁，通常InnoDB存储引擎选择回滚undo量最小的事务。</li>
+<li>超时机制<br>当两个事务互相等待时，当一个等待时间超过设置的某一阈值时，其中一个事务进行回滚，另一个等待的事务就能继续进行。InnoDB存储引擎中的innodb_lock_wait_timeout用来设置超时时间。</li>
+</ol>
+<h4 id="事务原子性、一致性、持久性的实现"><a href="#事务原子性、一致性、持久性的实现" class="headerlink" title="事务原子性、一致性、持久性的实现"></a>事务原子性、一致性、持久性的实现</h4><p>MySQL通过redo log和undo log实现了A、C、D的特性。redo log称为重做日志，用来保证事物的原子性和持久性，。undo log用来保证事物的一致性，帮助事务回滚及MVCC功能。redo和undo都可以视为一种恢复操作，redo恢复提交事务修改的页操作，而undo回滚行记录到某个特定版本。redo通常记录的是物理日志，记录的是页的物理修改操作；undo是逻辑日志，根据每行记录进行记录。</p>
+<h5 id="redo"><a href="#redo" class="headerlink" title="redo"></a>redo</h5><ol>
+<li>概念和功能<br>重做日志用来实现事务的持久性，即事务的ACID中的D。由两部分组成：一是内存中的重做日志缓冲（redo log buffer），是易失的；二是重做日志文件（redo log file），其是持久的。<br>InnoDB存储引擎通过Force Log at Commit机制实现事物的持久性，即当事务提交时，必须先将该事务的所有日志写入到重做日志文件进行持久化，待事务的commit操作完成才算完成。redo log是顺序写的，在数据库运行时不需要对redo log的文件进行读取操作。而undo log是需要进行随机读写的。<br>为了确保每次重做日志都写入重做日志文件，每次都将重做日志缓冲写入重做日志文件后，InnoDB存储引擎都需要调用一次fsync操作。重做日志缓冲先写入文件系统缓冲，为了确保重做日志写入磁盘，必须进行一次fsync操作。由于fsync的效率取决于磁盘的性能，因此磁盘的性能决定了事务提交的性能，也就是数据库的性能。<br>innodb_flush_log_at_trx_commit控制重做日志刷新到磁盘的策略。1代表事务提交时必须调用一次fsync操作；0表示事务提交时不进行写入重做日志操作，这个操作在master thread中完成，master thread每1秒会进行一次重做日志文件的fsync操作；2表示事务提交时将重做日志写入重做日志文件，但仅写入文件系统的缓存中，不进行fsync操作，数据库宕机但是操作系统不宕机时，并不会导致事物的丢失。</li>
+</ol>
+<h5 id="undo"><a href="#undo" class="headerlink" title="undo"></a>undo</h5><ol>
+<li>概念和功能<br>事务如果需要回滚，就需要undo。因此在对数据库进行修改时，InnoDB存储引擎不但会产生redo，还会产生一定量的undo。这样用户执行事务失败，或者主动发起rollback语句请求回滚，就可以利用这些undo信息将数据回滚到修改之前的样子。<br>undo是逻辑日志，只是将数据库逻辑的恢复到原来的样子。所有的修改都逻辑地取消了，但是数据结构和页本身在回滚之后可能不相同。<br>InnoDB存储引擎回滚时，它实际上做的是与先前相反的工作。对于每一个INSERT，InndoDB存储引擎会完成一个DELETE；对于每一个DELETE，InnoDB存储引擎会执行一个INSERT；对于每一个UPDATE，InnoDB存储引擎会执行一个相反的UPDATE，将修改的行放回去。<br>除了回滚，undo的另一个作用是MVCC，在InnoDB存储引擎中MVCC是通过undo来完成的。当用户读取一行记录，若该记录已经被其他事务占用，当前事务可以通过undo读取之前的行版本信息，以此实现非锁定读取。<br>undo log会产生redo log，也就是undo log的产生会伴随着redo log的产生，这是因为undo log也需要持久性的保护。</li>
+<li>undo log格式  </li>
+<li><ol>
+<li>insert undo log。指在insert操作过程中产生的undo log。因为insert操作的记录支队事务本身可见，对其他事务不可见，所以该undo log可以在事务提交后直接删除，不需要purge操作。  </li>
+</ol>
+</li>
+<li>2 update undo log。指的是对delete和update操作产生的undo log。该undo log可能需要提供MVCC机制，因此不能在事务提交时就进行删除。提交时放入undo log链表，等待purge线程进行最后的删除。</li>
+</ol>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+      <div>
+        <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+  <div>坚持原创分享</div>
+  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+    <span>打赏</span>
+  </button>
+  <div id="QR" style="display: none;">
+
+    
+      <div id="wechat" style="display: inline-block">
+        <img id="wechat_qr" src="/images/wechatpay.jpeg" alt="Jensen 微信支付"/>
+        <p>微信支付</p>
+      </div>
+    
+
+    
+
+    
+
+  </div>
+</div>
+
+      </div>
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/%E6%95%99%E7%A8%8B/" rel="tag"># 教程</a>
+          
+            <a href="/tags/MySQL/" rel="tag"># MySQL</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/12/10/%E6%B5%81%E7%A8%8B%E5%BC%95%E6%93%8E%E8%AE%BE%E8%AE%A1%E6%A6%82%E8%A6%81/" rel="next" title="流程引擎设计概要">
+                <i class="fa fa-chevron-left"></i> 流程引擎设计概要
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/04/16/MySQL%E4%BA%8B%E5%8A%A1%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB%E4%BB%A5%E5%8F%8AMVCC/" rel="prev" title="MySQL事务隔离级别以及MVCC">
+                MySQL事务隔离级别以及MVCC <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="/images/head.jpeg"
+                alt="Jensen" />
+            
+              <p class="site-author-name" itemprop="name">Jensen</p>
+              <p class="site-description motion-element" itemprop="description">Code</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">20</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">10</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+            <div class="links-of-author motion-element">
+                
+                  <span class="links-of-author-item">
+                    <a href="https://github.com/VfEver" target="_blank" title="GitHub">
+                      
+                        <i class="fa fa-fw fa-github"></i>GitHub</a>
+                  </span>
+                
+                  <span class="links-of-author-item">
+                    <a href="mailto:yansheng_zhao@gmail.com" target="_blank" title="E-Mail">
+                      
+                        <i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                  </span>
+                
+            </div>
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#MySQL中的事务"><span class="nav-number">1.</span> <span class="nav-text">MySQL中的事务</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#事务的特性：ACID"><span class="nav-number">2.</span> <span class="nav-text">事务的特性：ACID</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#A（Atomicity）原子性"><span class="nav-number">2.1.</span> <span class="nav-text">A（Atomicity）原子性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#C（consistency）一致性"><span class="nav-number">2.2.</span> <span class="nav-text">C（consistency）一致性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#I（isolation）隔离性"><span class="nav-number">2.3.</span> <span class="nav-text">I（isolation）隔离性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#D（durability）持久性"><span class="nav-number">2.4.</span> <span class="nav-text">D（durability）持久性</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#事务的实现"><span class="nav-number">3.</span> <span class="nav-text">事务的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#事务隔离性的实现"><span class="nav-number">3.1.</span> <span class="nav-text">事务隔离性的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#锁的定义"><span class="nav-number">3.1.1.</span> <span class="nav-text">锁的定义</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#锁的类型"><span class="nav-number">3.1.2.</span> <span class="nav-text">锁的类型</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#一致性非锁定读"><span class="nav-number">3.1.3.</span> <span class="nav-text">一致性非锁定读</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#一致性锁定度"><span class="nav-number">3.1.4.</span> <span class="nav-text">一致性锁定度</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#锁的算法"><span class="nav-number">3.1.5.</span> <span class="nav-text">锁的算法</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#锁问题"><span class="nav-number">3.1.6.</span> <span class="nav-text">锁问题</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#死锁"><span class="nav-number">3.1.7.</span> <span class="nav-text">死锁</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#事务原子性、一致性、持久性的实现"><span class="nav-number">3.2.</span> <span class="nav-text">事务原子性、一致性、持久性的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#redo"><span class="nav-number">3.2.1.</span> <span class="nav-text">redo</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#undo"><span class="nav-number">3.2.2.</span> <span class="nav-text">undo</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Jensen</span>
+
+  
+</div>
+
+
+  <div class="powered-by">Code</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Pisces</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  <script type="text/javascript">
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url);
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
