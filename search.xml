@@ -9,14 +9,37 @@
 <p><img src="/2019/12/26/Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC/methine_down.png" alt="down"></p>
 <p>机器宕机、网络异常等，导致消息不可达等异常流程，会造成数据不一致的情况。比如未收到消息的节点与其他节点数据不一致，宕机机器重启后数据不一致以及恢复策略等。也就是面对如下异常问题时，算法需要保证的就是，对某个数据的值达成最终一致。</p>
 <p><img src="/2019/12/26/Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC/issures.png" alt="issure"></p>
-<h2 id="三、概念-amp-定义"><a href="#三、概念-amp-定义" class="headerlink" title="三、概念&amp;定义"></a>三、概念&amp;定义</h2><p>Paxos算法模型中定义了三种角色类型：</p>
+<h2 id="三、概念-amp-定义"><a href="#三、概念-amp-定义" class="headerlink" title="三、概念&amp;定义"></a>三、概念&amp;定义</h2><h3 id="3-1，角色类型"><a href="#3-1，角色类型" class="headerlink" title="3.1，角色类型"></a>3.1，角色类型</h3><p>Paxos算法模型中定义了三种角色类型：</p>
 <ol>
-<li>Proposer</li>
-<li>Acceptor</li>
-<li>Learner</li>
+<li>Proposer，模型中的提议者，作用是提出建议。</li>
+<li>Acceptor，模型中的批准者，作用是针对提议者的提议进行接受批准。</li>
+<li>Learner，模型中的学习者，也就是会从批准者获取数据并应用。</li>
 </ol>
 <p><img src="/2019/12/26/Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC/role.png" alt="role"></p>
-]]></content>
+<p>需要注意的一点就是，模型中三种角色类型，并不是一开始就完全定死的。每一个节点并不止一种角色类型，可以即是提议者，又是批准者，还作为学习者获取数据应用。这一点理解起来不难，想象这么一个场景，Zookeeper集群中，在开始启动选主的过程中，每一个服务节点并不是单纯的提议者或者批准者（zk中节点类型并不是这么定义，但是核心算法是Paxos）。如下图所示，每一个node在发起自己的投票的时候为Proposer，接收到投票后做决策时为Acceptor（类似Acceptor）。</p>
+<p><img src="/2019/12/26/Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC/role_example.png" alt="node_example"></p>
+<h3 id="3-2，提案（Proposal）"><a href="#3-2，提案（Proposal）" class="headerlink" title="3.2，提案（Proposal）"></a>3.2，提案（Proposal）</h3><p>Proposer提出请求，Acceptor针对此请求作出响应。这个由proposer产生的请求，我们称之为提案——Proposal。Proposal由两部分组成，提案编号和提案值。提案编号可以理解为Proposer发起提案的一个唯一标识；提案值则代表此次提案投票选定的值。为什么提案包含两部分内容（编号+值）？只有编号或者只有值可不可以？下面在算法的推导过程中，会具体讲解这些疑问。提案的表示定义为：Proposal(N,V)。</p>
+<h2 id="四、问题描述"><a href="#四、问题描述" class="headerlink" title="四、问题描述"></a>四、问题描述</h2><p>假设有一组可以提出提案的进程集合，那么对于一个一致性算法来说需要保证以下几点：</p>
+<ul>
+<li>在这些被提出的提案中，只有一个会被选定。</li>
+<li>如果没有提案被提出，那么就不会有被选定的提案。</li>
+<li>当一个提案被选定后，进程应该可以获取被选定的提案信息。</li>
+</ul>
+<p>相对于一致性的需求来说，算法的安全性定义如下：</p>
+<ul>
+<li>只有被提出的提案才能被选定。</li>
+<li>只能有一个值被选定。</li>
+<li>如果某个进行获取到某个提案被选定，那么这个提案必须是真正被选定的那个。</li>
+</ul>
+<p>同时我们需要对问题的复杂性做一些定义：</p>
+<ul>
+<li>每个节点角色不是固定的，可能是Proposal、Acceptor、Leaner。</li>
+<li>每个节点运行的速率是不固定的，也就是在发起提案、作出决策的时间是不固定的。</li>
+<li>每个节点可能因为机器问题宕机、重启。</li>
+<li>消息在传输过程中由于网络问题丢失、重复、延迟。但是消息不会被损坏（发送和接受到的消息肯定是完全完整的）。</li>
+</ul>
+<p>阐述完整体问题描述，接下来我们将针对此问题的算法进行推导。</p>
+<h2 id="五、-算法推导"><a href="#五、-算法推导" class="headerlink" title="五、 算法推导"></a>五、 算法推导</h2>]]></content>
       <categories>
         <category>技术</category>
       </categories>
