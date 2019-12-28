@@ -95,7 +95,8 @@
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;mutil.png">
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;mutil_fail.png">
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;mutil_err_same.png">
-<meta property="og:updated_time" content="2019-12-28T13:20:52.380Z">
+<meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;p2a_error.png">
+<meta property="og:updated_time" content="2019-12-28T17:06:13.947Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;methine_down.png">
 
@@ -457,11 +458,45 @@
 </ol>
 <p>这样我们解决了一个提案怎么才能让大多数Acceptor批准的问题，但是并没有解决大多数Acceptor对所收到的提案达成最终一致的问题。继续从Acceptor和Proposer来看，我们可以得出，每个角色只是单独负责自己的职责功能，对彼此的交互并没有一个统一协调的进步。Acceptor只管负责批准提案，Proposer只管负责产生提案。所以我们就需要要求Acceptor和Proposer进一步加强交互，做到信息互通。</p>
 <p>我们对Proposer产生的提案作出如下定义，Proposal由两部分内容组成，编号和值。也就是Proposal(N,V)。N代表本次提案的编号，V代表本次提案的值。提案的值V就是Acceptor和Proposer多次交互最终需要达成一致的值。</p>
-<h3 id="5-3，"><a href="#5-3，" class="headerlink" title="5.3，"></a>5.3，</h3><p>上述提到，我们允许多个提案被选定，但是同时必须保证所有被选定的提案都必须拥有相同的V值。对于提案value值的约定，结合提案编号，我们有如下原则：</p>
+<h3 id="5-3，算法原则推导"><a href="#5-3，算法原则推导" class="headerlink" title="5.3，算法原则推导"></a>5.3，算法原则推导</h3><p>上述提到，我们允许多个提案被选定，但是同时必须保证所有被选定的提案都必须拥有相同的V值。对于提案value值的约定，结合提案编号，我们有如下原则：</p>
 <p>P2:如果编号为 M<sub>0</sub> 、Value值为V<sub>0</sub> 的提案（即[M<sub>0</sub>,V<sub>0</sub> ]）被选定了，那么所有比编号M<sub>0</sub>更高的，且被选定的提案，其Value值也必须是V<sub>0</sub>。</p>
 <p>一个提案要被选定，首先必须被至少一个Acceptor批准，因此我们可以通过满足如下条件来满足P2。</p>
 <p>P2a:如果编号为 M<sub>0</sub> 、Value值为V<sub>0</sub> 的提案（即[M<sub>0</sub>,V<sub>0</sub> ]）被选定了，那么所有比编号M<sub>0</sub>更高的，且被Acceptor批准的提案，其Value值也必须是V<sub>0</sub>。</p>
-
+<p>到目前为止，我们通过P1、P2可以保证有一个提案会被选定，但是还会存在这样一个问题。由于Proposer和Acceptor的通信涉及到网络延迟，很可能出现某个Proposer提出的提案已经被大多数Acceptor选定，另外一个Proposer又提出一个其他value值且编号比被选定提案编号还高的提案，同时从未批准过任何提案的Acceptor A接收到了，根据P1，此Acceptor A必须批准该提案。这就出现了Acceptor A批准的提案和其他Acceptor批准的不一致，违反了P2a原则。如下图所示：</p>
+<p><img src="/2019/12/26/Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC/p2a_error.png" alt="p2a_error"></p>
+<p>因此我们需要针对P2a进行强化：</p>
+<p>P2b:如果一个提案[M<sub>0</sub>,V<sub>0</sub> ]被选定后，那么之后任何Proposer产生的编号更高的提案，其value值都为V<sub>0</sub> 。</p>
+<p>通过P2b，我们可以推导出P2a，进而也可以推导出P2。</p>
+<p>如何保证某个Value为v的提案被选定后，Proposer提出的编号更高提案的value都是v呢？可以通过第二数学归纳法证明。假设：</p>
+<ul>
+<li>编号在M<sub>0</sub>到M<sub>n-1</sub>之间的提案，其Value的值都是V<sub>0</sub>，证明编号为M的提案的Value值也为V<sub>0</sub>。</li>
+</ul>
+<p>因为编号为M<sub>0</sub>的提案已经被选定了，这就意味着肯定存在一个由半数以上的Acceptor组成的集合C，C中的每个Acceptor都批准了该提案。在结合假设，编号为M<sub>0</sub>的提案被选定意味着：</p>
+<ul>
+<li>C中的每一个Acceptor都批准了一个编号在M<sub>0</sub>到M<sub>n-1</sub>范围内的提案，并且每个编号在M<sub>0</sub>到M<sub>0-1</sub>范围内的都被Acceptor批准的提案，其Value值都为V<sub>0</sub>。</li>
+</ul>
+<p>我们再定义一个存在半数以上Acceptor的集合S，S中肯定包含且至少包含C中的一个成员，因此我们可以认为如果保证了如下P2c的不变性，那么编号为M<sub>n</sub>的提案的Value也为V<sub>0</sub>.</p>
+<p>P2c:对于任意的M<sub>n</sub>和V<sub>n</sub>，如果提案[M<sub>n</sub>,V<sub>n</sub>]被提出，那么肯定存在一个半数以上的集合S，满足以下任意一点：</p>
+<ol>
+<li>S中不存在任何批准过编号小于M<sub>n</sub>的提案的Acceptor。</li>
+<li>选取S中所有Acceptor批准的编号小于M<sub>n</sub>的提案，其中编号最大的那个提案其Value值是V<sub>n</sub>。</li>
+</ol>
+<p>我们通过P2c可以知道每个Proposer如何产生一个提案：对于产生的每个提案[M<sub>n</sub>,V<sub>n</sub>]，需要满足以下条件：</p>
+<p>存在一个由半数以上Acceptor组成的集合S：</p>
+<ol>
+<li>要么S中没有Acceptor批准过任何提案，那么S接收到任何提案，都会直接批准。</li>
+<li>要么S中所有Acceptor批准的所有编号小于M<sub>n</sub>的提案中，编号最大的那个提案的Value值为V<sub>n</sub>。</li>
+</ol>
+<p>···</p>
+<p>证明过程待添加</p>
+<p>···</p>
+<h3 id="5-4，算法描述"><a href="#5-4，算法描述" class="headerlink" title="5.4，算法描述"></a>5.4，算法描述</h3><p>上文我们提到，要通过加强Proposer和Acceptor之间的交互，来完成最终提案值的选定；同时我们在P2c的推导过程中，确定了Proposer要感知Acceptor的批准的提案的值，也就是Proposer需要有一个拿到Acceptor批准的提案值的环节。于是我们可以将获取最终值分为两个阶段：</p>
+<ol>
+<li>Proposer发起提案请求，Acceptor处理请求，并有一定的返回。</li>
+<li>Proposer处理Acceptor的返回，并进行提案最终值的确认。Acceptor处理Proposer发起的确认，达成一致。</li>
+</ol>
+<p>专业一点的讲法就是分为Prepare阶段和Acceptor阶段。</p>
+<h4 id="5-4-1，Proposer生成提案"><a href="#5-4-1，Proposer生成提案" class="headerlink" title="5.4.1，Proposer生成提案"></a>5.4.1，Proposer生成提案</h4><h4 id="5-4-2，Acceptor批准提案"><a href="#5-4-2，Acceptor批准提案" class="headerlink" title="5.4.2，Acceptor批准提案"></a>5.4.2，Acceptor批准提案</h4>
       
     </div>
     
@@ -679,7 +714,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、Paxos介绍"><span class="nav-number">1.</span> <span class="nav-text">一、Paxos介绍</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、背景-amp-解决的问题"><span class="nav-number">2.</span> <span class="nav-text">二、背景&amp;解决的问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、概念-amp-定义"><span class="nav-number">3.</span> <span class="nav-text">三、概念&amp;定义</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1，角色类型"><span class="nav-number">3.1.</span> <span class="nav-text">3.1，角色类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2，提案（Proposal）"><span class="nav-number">3.2.</span> <span class="nav-text">3.2，提案（Proposal）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四、问题描述"><span class="nav-number">4.</span> <span class="nav-text">四、问题描述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#五、-算法推导"><span class="nav-number">5.</span> <span class="nav-text">五、 算法推导</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1，多个Accptor"><span class="nav-number">5.1.</span> <span class="nav-text">5.1，多个Accptor</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2，提案-Proposal-amp-批准-Accept-升级"><span class="nav-number">5.2.</span> <span class="nav-text">5.2，提案(Proposal)&amp;批准(Accept)升级</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3，"><span class="nav-number">5.3.</span> <span class="nav-text">5.3，</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、Paxos介绍"><span class="nav-number">1.</span> <span class="nav-text">一、Paxos介绍</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、背景-amp-解决的问题"><span class="nav-number">2.</span> <span class="nav-text">二、背景&amp;解决的问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、概念-amp-定义"><span class="nav-number">3.</span> <span class="nav-text">三、概念&amp;定义</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1，角色类型"><span class="nav-number">3.1.</span> <span class="nav-text">3.1，角色类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2，提案（Proposal）"><span class="nav-number">3.2.</span> <span class="nav-text">3.2，提案（Proposal）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四、问题描述"><span class="nav-number">4.</span> <span class="nav-text">四、问题描述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#五、-算法推导"><span class="nav-number">5.</span> <span class="nav-text">五、 算法推导</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1，多个Accptor"><span class="nav-number">5.1.</span> <span class="nav-text">5.1，多个Accptor</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2，提案-Proposal-amp-批准-Accept-升级"><span class="nav-number">5.2.</span> <span class="nav-text">5.2，提案(Proposal)&amp;批准(Accept)升级</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3，算法原则推导"><span class="nav-number">5.3.</span> <span class="nav-text">5.3，算法原则推导</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-4，算法描述"><span class="nav-number">5.4.</span> <span class="nav-text">5.4，算法描述</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#5-4-1，Proposer生成提案"><span class="nav-number">5.4.1.</span> <span class="nav-text">5.4.1，Proposer生成提案</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-4-2，Acceptor批准提案"><span class="nav-number">5.4.2.</span> <span class="nav-text">5.4.2，Acceptor批准提案</span></a></li></ol></li></ol></li></ol></div>
             
 
           </div>
