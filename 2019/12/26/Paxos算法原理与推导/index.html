@@ -91,7 +91,11 @@
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;issures.png">
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;role.png">
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;role_example.png">
-<meta property="og:updated_time" content="2019-12-27T16:34:56.092Z">
+<meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;acceptor_down.png">
+<meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;mutil.png">
+<meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;mutil_fail.png">
+<meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;mutil_err_same.png">
+<meta property="og:updated_time" content="2019-12-28T13:20:52.380Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;methine_down.png">
 
@@ -419,13 +423,45 @@
 </ul>
 <p>同时我们需要对问题的复杂性做一些定义：</p>
 <ul>
-<li>每个节点角色不是固定的，可能是Proposal、Acceptor、Leaner。</li>
+<li>每个节点角色不是固定的，可能是Proposer、Acceptor、Leaner。</li>
 <li>每个节点运行的速率是不固定的，也就是在发起提案、作出决策的时间是不固定的。</li>
 <li>每个节点可能因为机器问题宕机、重启。</li>
 <li>消息在传输过程中由于网络问题丢失、重复、延迟。但是消息不会被损坏（发送和接受到的消息肯定是完全完整的）。</li>
 </ul>
 <p>阐述完整体问题描述，接下来我们将针对此问题的算法进行推导。</p>
-<h2 id="五、-算法推导"><a href="#五、-算法推导" class="headerlink" title="五、 算法推导"></a>五、 算法推导</h2>
+<h2 id="五、-算法推导"><a href="#五、-算法推导" class="headerlink" title="五、 算法推导"></a>五、 算法推导</h2><p>要满足提出个提案有一个被选定，我们可以先假定只有一个Acceptor。当Proposer提出提案，并且此Acceptor收到提案，就批准该提案。这样不会出现到底哪个提案会被选定还是是否还存在商议的过程。但是这样也出现了一个问题，那就是当这个Acceptor挂掉宕机，那就失去了可靠性的保证，也就没有任何意义。</p>
+<p><img src="/2019/12/26/Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC/acceptor_down.png" alt="acceptor down"></p>
+<p>所以我们选定一组节点作为Acceptor，Proposer向一组Acceptor发送提案，那么我们就要讨论这一组Acceptor如何决议出最后一个提案。另外我们规定每一个Acceptor最多只能批准一个提案，那么就能保证只有一个提案被选定。</p>
+<h3 id="5-1，多个Accptor"><a href="#5-1，多个Accptor" class="headerlink" title="5.1，多个Accptor"></a>5.1，多个Accptor</h3><p>为了使算法推导、理解简单，我们先假定有一组Proposer和一组Acceptor，两组角色定义不会更改（实际在系统运转过程中，每一个进程或者每一个节点，可能为Proposer或Acceptor）。Proposer组向Acceptor组发起提案，Acceptor组批准提案。如下：</p>
+<p><img src="/2019/12/26/Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC/mutil.png" alt="mutil"></p>
+<p>Proposer集合中的每个节点向Acceptor集合中的每个节点发送提案请求，请求可能有延迟、重复、不可达，怎么保证批准一个提案呢？于是我们定义以下一个原则：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line">原则P1:一个Acceptor必须批准它接受到第一个提案。</span></pre></td></tr></table></figure>
+
+<p>基于此原则，Acceptor收到Proposer发出的提案，如果是第一个，则批准。这就保证了最后肯定会有提案批准成功。但是又产生了另外一个问题，那就是多个Proposer分别提出提案到不同的Acceptor，那么就出现了多个提案都被批准的情况，违背我们的安全性原则。</p>
+<p><img src="/2019/12/26/Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC/mutil_fail.png" alt="mutil_fail"></p>
+<p>或者出现如下异常case（其中一个Acceptor宕机，导致P1、P2提出的提案分别被相同数量的Acceptor批准）：</p>
+<p><img src="/2019/12/26/Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC/mutil_err_same.png" alt="mutil_err_same"></p>
+<p>由于我们定了“Acceptor必须接受它接受的第一个提案”，但是上述两个异常情况，导致最终可能会有多个提案被选定，所以我们需要加一个规定：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line">规定：一个提案被选定需要被半数以上的Acceptor接受。</span></pre></td></tr></table></figure>
+
+<p>当Acceptor组中绝大多数Acceptor批准一个提案的时候，我们就认为这个提案被选定。绝大多数定义为本组Acceptor数量的一半以上，任意两个一半以上的子集肯定包含有至少一个公共成员Acceptor。因为这个规定，所以意味着每个Acceptor可能需要批准多个提案，不然类似上述异常case情况下，约束为每个Acceptor只能批准一个，那么最终不会有唯一一个最终提案产生。</p>
+<h3 id="5-2，提案-Proposal-amp-批准-Accept-升级"><a href="#5-2，提案-Proposal-amp-批准-Accept-升级" class="headerlink" title="5.2，提案(Proposal)&amp;批准(Accept)升级"></a>5.2，提案(Proposal)&amp;批准(Accept)升级</h3><p>开始第一阶段我们的提案可以认为只是单纯的一个编号，Acceptor批准提案批准的只是这个提案的编号。但是由于提案的最终选定需要多数Acceptor批准，所以每个Proposer提出的提案，需要得到超过半数的Acceptor的批准，若没有超过半数，需要再次发起一次提案，这时就需要重新发起的提案更换提案编号。更换编号的策略，简单直接点就是每次每个Proposer产生一个新的提案，所属编号为<strong>全局</strong>递增。编号生成器规则这里不再阐述。</p>
+<p>从Acceptor角度讲，由于允许可以批准多次提案，但是由于需要保证一个提案产生，所以需要对Acceptor的多次批准做一个限制，规定如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line">规定：一个Acceptor不能批准编号小于它已经响应过的所有提案中编号最大的编号值。</span></pre></td></tr></table></figure>
+
+<p>什么意思呢？假设Acceptor A，已经对收到的提案编号（4，5）作出过响应（Acceptor需要记录它批准过的提案中最大的提案编号），这时由于网络延迟等问题，来了一个编号为3的提案，A对这个提案直接返回error或者忽略这个提案。此时发出提案的Proposer收到了error或者没收到对它提案的响应（非ok的响应），那么也就意味着它丧失了对应Acceptor的表决。</p>
+<p>我们通过从Proposer和Acceptor角度分析得出：</p>
+<ol>
+<li>提案编号全局递增</li>
+<li>Acceptor可以批准多个提案但是不能批准编号小于它已经批准过的最大的提案编号</li>
+</ol>
+<p>这样我们解决了一个提案怎么才能让大多数Acceptor批准的问题，但是并没有解决大多数Acceptor对所收到的提案达成最终一致的问题。继续从Acceptor和Proposer来看，我们可以得出，每个角色只是单独负责自己的职责功能，对彼此的交互并没有一个统一协调的进步。Acceptor只管负责批准提案，Proposer只管负责产生提案。所以我们就需要要求Acceptor和Proposer进一步加强交互，做到信息互通。</p>
+<p>我们对Proposer产生的提案作出如下定义，Proposal由两部分内容组成，编号和值。也就是Proposal(N,V)。N代表本次提案的编号，V代表本次提案的值。提案的值V就是Acceptor和Proposer多次交互最终需要达成一致的值。</p>
+<h3 id="5-3，"><a href="#5-3，" class="headerlink" title="5.3，"></a>5.3，</h3><p>上述提到，我们允许多个提案被选定，但是同时必须保证所有被选定的提案都必须拥有相同的V值。对于提案value值的约定，结合提案编号，我们有如下原则：</p>
+<p>P2:如果编号为 M<sub>0</sub> 、Value值为V<sub>0</sub> 的提案（即[M<sub>0</sub>,V<sub>0</sub> ]）被选定了，那么所有比编号M<sub>0</sub>更高的，且被选定的提案，其Value值也必须是V<sub>0</sub>。</p>
+<p>一个提案要被选定，首先必须被至少一个Acceptor批准，因此我们可以通过满足如下条件来满足P2。</p>
+<p>P2a:如果编号为 M<sub>0</sub> 、Value值为V<sub>0</sub> 的提案（即[M<sub>0</sub>,V<sub>0</sub> ]）被选定了，那么所有比编号M<sub>0</sub>更高的，且被Acceptor批准的提案，其Value值也必须是V<sub>0</sub>。</p>
+
       
     </div>
     
@@ -643,7 +679,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、Paxos介绍"><span class="nav-number">1.</span> <span class="nav-text">一、Paxos介绍</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、背景-amp-解决的问题"><span class="nav-number">2.</span> <span class="nav-text">二、背景&amp;解决的问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、概念-amp-定义"><span class="nav-number">3.</span> <span class="nav-text">三、概念&amp;定义</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1，角色类型"><span class="nav-number">3.1.</span> <span class="nav-text">3.1，角色类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2，提案（Proposal）"><span class="nav-number">3.2.</span> <span class="nav-text">3.2，提案（Proposal）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四、问题描述"><span class="nav-number">4.</span> <span class="nav-text">四、问题描述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#五、-算法推导"><span class="nav-number">5.</span> <span class="nav-text">五、 算法推导</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、Paxos介绍"><span class="nav-number">1.</span> <span class="nav-text">一、Paxos介绍</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、背景-amp-解决的问题"><span class="nav-number">2.</span> <span class="nav-text">二、背景&amp;解决的问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、概念-amp-定义"><span class="nav-number">3.</span> <span class="nav-text">三、概念&amp;定义</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1，角色类型"><span class="nav-number">3.1.</span> <span class="nav-text">3.1，角色类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2，提案（Proposal）"><span class="nav-number">3.2.</span> <span class="nav-text">3.2，提案（Proposal）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四、问题描述"><span class="nav-number">4.</span> <span class="nav-text">四、问题描述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#五、-算法推导"><span class="nav-number">5.</span> <span class="nav-text">五、 算法推导</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1，多个Accptor"><span class="nav-number">5.1.</span> <span class="nav-text">5.1，多个Accptor</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2，提案-Proposal-amp-批准-Accept-升级"><span class="nav-number">5.2.</span> <span class="nav-text">5.2，提案(Proposal)&amp;批准(Accept)升级</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3，"><span class="nav-number">5.3.</span> <span class="nav-text">5.3，</span></a></li></ol></li></ol></div>
             
 
           </div>
