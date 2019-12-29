@@ -96,7 +96,7 @@
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;mutil_fail.png">
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;mutil_err_same.png">
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;p2a_error.png">
-<meta property="og:updated_time" content="2019-12-28T17:06:13.947Z">
+<meta property="og:updated_time" content="2019-12-29T15:52:16.465Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;methine_down.png">
 
@@ -496,7 +496,33 @@
 <li>Proposer处理Acceptor的返回，并进行提案最终值的确认。Acceptor处理Proposer发起的确认，达成一致。</li>
 </ol>
 <p>专业一点的讲法就是分为Prepare阶段和Acceptor阶段。</p>
-<h4 id="5-4-1，Proposer生成提案"><a href="#5-4-1，Proposer生成提案" class="headerlink" title="5.4.1，Proposer生成提案"></a>5.4.1，Proposer生成提案</h4><h4 id="5-4-2，Acceptor批准提案"><a href="#5-4-2，Acceptor批准提案" class="headerlink" title="5.4.2，Acceptor批准提案"></a>5.4.2，Acceptor批准提案</h4>
+<h4 id="5-4-1，Proposer生成提案"><a href="#5-4-1，Proposer生成提案" class="headerlink" title="5.4.1，Proposer生成提案"></a>5.4.1，Proposer生成提案</h4><ol>
+<li>Proposer选择一个新的提案编号M<sub>n</sub>，然后向某个Acceptor集合的成员发送请求，要求该集合中的Acceptor作出如下回应<ul>
+<li>向Proposer承诺，保证不再批准任何编号小于M<sub>n</sub>的提案。</li>
+<li>如果Acceptor已经批准过任何提案，那么就向Proposer反馈当前该Acceptor已经批准的编号小于M<sub>n</sub>但为最大编号的那个提案的值</li>
+</ul>
+</li>
+</ol>
+<p>我们将此类请求称之为编号为M<sub>n</sub>提案的Prepare请求。</p>
+<ol start="2">
+<li>如果Proposer收到了来自半数以上的Acceptor的响应结果，那么它就可以产生编号为M<sub>n</sub>、Value值为V<sub>n</sub>的提案，这里的V<sub>n</sub>是所有响应中编号最大的提案的Value值。如果半数以上的Acceptor没有批准过任何提案，即响应中不包含任何提案，那么此时V<sub>n</sub>值就可以由Proposer任意选择。</li>
+</ol>
+<p>Proposer向Acceptor发起请求并期望得到批准，我们称此次请求为Accept请求。</p>
+<h4 id="5-4-2，Acceptor批准提案"><a href="#5-4-2，Acceptor批准提案" class="headerlink" title="5.4.2，Acceptor批准提案"></a>5.4.2，Acceptor批准提案</h4><p>由上文内容我们知道，一个Acceptor可能会收到Proposer两种请求，分别是Prepare请求和Accept请求，对这两类请求做出响应的条件如下：</p>
+<ul>
+<li>Prepare请求：Acceptor可以在任何时候响应一个Prepare请求。</li>
+<li>Accept请求：在不违背Accept现有承诺前提下，可以任意响应Accept请求。</li>
+</ul>
+<p>所以针对Acceptor我们定义以下原则：</p>
+<p>P1a:一个Acceptor只要尚未响应过任何编号大于M<sub>n</sub>的Prepare请求，那么它就可以接受这个编号为M<sub>n</sub>的提案。</p>
+<p>针对此原则，我们还可以进行优化，那就是针对编号小于M<sub>n</sub>的提案Prepare请求，可以忽略；同样提案编号的Prepare，不再重复响应。接下来我们针对这两阶段Acceptor的动作，做一个描述。</p>
+<p><strong>阶段一</strong></p>
+<ol>
+<li>Proposer选择一个提案编号M<sub>n</sub>，然后向Acceptor的某个超过半数的子集成员发送编号M<sub>n</sub>的Prepare请求。</li>
+<li>如果Acceptor收到一个编号为M<sub>n</sub>请求，且编号M<sub>n</sub>大于该Acceptor已经响应的所有Proposer请求编号，那么它会将它已经批准过的最大编号的提案作为响应反馈给Proposer。同时该Acceptor承诺不回再批准任何编号小于M<sub>n</sub>的提案。</li>
+</ol>
+<p>举例：如果一个Acceptor已经批准过所有Prepare请求对应的提案编号分别为[4、5、6]，那么该Acceptor收到一个编号为7的Prepare请求后，就会将编号为7的提案作为响应返回给Proposer。</p>
+
       
     </div>
     
