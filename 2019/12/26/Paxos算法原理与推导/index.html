@@ -97,7 +97,7 @@
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;mutil_err_same.png">
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;p2a_error.png">
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;two_jieduan.png">
-<meta property="og:updated_time" content="2019-12-29T16:22:14.278Z">
+<meta property="og:updated_time" content="2020-01-05T15:11:32.590Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;26&#x2F;Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC&#x2F;methine_down.png">
 
@@ -488,9 +488,14 @@
 <li>要么S中没有Acceptor批准过任何提案，那么S接收到任何提案，都会直接批准。</li>
 <li>要么S中所有Acceptor批准的所有编号小于M<sub>n</sub>的提案中，编号最大的那个提案的Value值为V<sub>n</sub>。</li>
 </ol>
-<p>···</p>
-<p>证明过程待添加</p>
-<p>···</p>
+<p>我们接下来使用第二数学归纳法来证明。首先假设提案[M<sub>0</sub>,V<sub>0</sub>]被选定了，那么比这个提案编号大的提案[M<sub>n</sub>,V<sub>n</sub>]，我们需要证明在P2c的前提下，对于所有的[M<sub>n</sub>,V<sub>n</sub>]，存在V<sub>n</sub>=V<sub>0</sub>。</p>
+<ol>
+<li>当M<sub>n</sub>=M<sub>0+1</sub>时，如果有这样一个编号为M<sub>n</sub>的提案，首先我们知道[M<sub>0</sub>,V<sub>0</sub>]已经被选定了，那么就一定存在一个Acceptor的子集S，且S中的Acceptor已经批准了小于M<sub>n</sub>的提案，于是V<sub>n</sub>只能是批准的所有编号小于M<sub>n</sub>提案中编号最大提案的Value。此时M<sub>n</sub>=M<sub>0+1</sub>，因此编号小于M<sub>n</sub>的编号只能是M<sub>0</sub>，也就是批准的提案为[M<sub>0</sub>,V<sub>0</sub>]。同时由于S和通过[M<sub>0</sub>,V<sub>0</sub>]的Acceptor集合都是多数集，也就是二者肯定至少有一个Acceptor的交集，这样Proposer在确定V<sub>n</sub>取值的时候，就一定会选择V<sub>0</sub>。</li>
+</ol>
+<p>这是数学归纳法的第一步，证明了n=0+1的情况下，是符合我们预期的。接下来我们就要假设在n=0+1到n=n-1这个区域符合预期，并在此基础上推导出当编号为M<sub>n</sub>也成立。</p>
+<ol start="2">
+<li>根据假设，编号在M<sub>0+1</sub>到M<sub>n-1</sub>区间内的所有提案的Value值为V<sub>0</sub>，需要证明的是编号为M<sub>n</sub>的提案的Value值也为V<sub>0</sub>。根据P2c，首先同样一定存在一个Acceptor集合S，且S中的Acceptor已经批准了小于M<sub>n</sub>的提案，那么编号M<sub>n</sub>的提案的Value值只能是这个多数集S中编号小与M<sub>n</sub>但为最大编号的那个提案的值。如果这个最大提案编号的值落在M<sub>0+1</sub>到M<sub>n-1</sub>区间，那么Value值肯定是V<sub>0</sub>。如果不落在这个区间，那么它的编号不可能比M<sub>0</sub>更小，肯定就是M<sub>0</sub>，以为S也肯定与批准[M<sub>0</sub>,V<sub>0</sub>]这个提案的Acceptor集合S<sub>1</sub>有交集，而如果编号是M<sub>0</sub>，那么它的Value值也是V<sub>0</sub>。</li>
+</ol>
 <h3 id="5-4，算法描述"><a href="#5-4，算法描述" class="headerlink" title="5.4，算法描述"></a>5.4，算法描述</h3><p>上文我们提到，要通过加强Proposer和Acceptor之间的交互，来完成最终提案值的选定；同时我们在P2c的推导过程中，确定了Proposer要感知Acceptor的批准的提案的值，也就是Proposer需要有一个拿到Acceptor批准的提案值的环节。于是我们可以将获取最终值分为两个阶段：</p>
 <ol>
 <li>Proposer发起提案请求，Acceptor处理请求，并有一定的返回。</li>
@@ -768,7 +773,7 @@
 
     <footer id="footer" class="footer">
       <div class="footer-inner">
-        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
   <span class="with-love">
     <i class="fa fa-user"></i>
   </span>
