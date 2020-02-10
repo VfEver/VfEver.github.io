@@ -1,6 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>redis数据结构与原理</title>
+    <url>/2020/02/10/redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E5%8E%9F%E7%90%86/</url>
+    <content><![CDATA[<h2 id="一、缓存"><a href="#一、缓存" class="headerlink" title="一、缓存"></a>一、缓存</h2><h3 id="1-1，缓存的概念"><a href="#1-1，缓存的概念" class="headerlink" title="1.1，缓存的概念"></a>1.1，缓存的概念</h3><p>缓存的概念很广泛，依据用途不同可以分为：</p>
+<ol>
+<li>操作系统磁盘的缓存：减少磁盘操作</li>
+<li>数据库缓存：减少磁盘IO</li>
+<li>应用程序缓存：减少数据库访问</li>
+<li>Web服务器缓存：减少服务器访问</li>
+<li>客户端浏览器缓存：减少网页访问</li>
+</ol>
+<p>由此我们可以简单认为缓存实际上就是为了减少交互而存在的功能或者组件。</p>
+<h3 id="1-2，缓存的意义"><a href="#1-2，缓存的意义" class="headerlink" title="1.2，缓存的意义"></a>1.2，缓存的意义</h3><p>由以上缓存的用途我们可以知道，缓存意义重大，用于减少互相之间的交互提升效率，本质上是热点数据或者临时数据有了一个就近或者效率高的备份。这就引出了一个问题：备份数据和源数据的数据一致性问题。因为你访问数据时是首先访问备份数据（效率原因），数据不存在或者失效再访问源数据。即使缓存存在不止这一个问题，但是由于它的存在带来服务质量以及运作效率的提升，是非常重要不可或缺的。</p>
+<h3 id="1-3，关于redis"><a href="#1-3，关于redis" class="headerlink" title="1.3，关于redis"></a>1.3，关于redis</h3><p>我们常见的缓存大致可以分为应用内缓存和组件缓存。应用内缓存有java中的Map，组件缓存包含我们常用的redis和MemCache。接下来，我们将从数据结构入手，讲解redis的基本用法和原理分析。</p>
+<h2 id="二、redis的数据结构与用法"><a href="#二、redis的数据结构与用法" class="headerlink" title="二、redis的数据结构与用法"></a>二、redis的数据结构与用法</h2><h2 id="三、redis数据结构原理"><a href="#三、redis数据结构原理" class="headerlink" title="三、redis数据结构原理"></a>三、redis数据结构原理</h2>]]></content>
+      <categories>
+        <category>技术</category>
+      </categories>
+      <tags>
+        <tag>教程</tag>
+        <tag>Redis</tag>
+        <tag>分布式</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Paxos算法原理与推导</title>
     <url>/2019/12/26/Paxos%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8E%A8%E5%AF%BC/</url>
     <content><![CDATA[<h2 id="一、Paxos介绍"><a href="#一、Paxos介绍" class="headerlink" title="一、Paxos介绍"></a>一、Paxos介绍</h2><p>我们常见的分布式系统中，总会发生网络异常（包括消息的延迟、丢失、重复、乱序，还有网络分区）、机器宕机等异常情况。如何才能保证在发生诸如此类问题的情况下，快速且正确的在集群内部对某个数据的值达成一致，不会破坏系统的一致性，这就需要Paxos算法的支撑。</p>
@@ -149,8 +173,8 @@
       </categories>
       <tags>
         <tag>教程</tag>
-        <tag>ZooKeeper</tag>
         <tag>分布式</tag>
+        <tag>ZooKeeper</tag>
       </tags>
   </entry>
   <entry>
@@ -308,8 +332,8 @@
       </categories>
       <tags>
         <tag>教程</tag>
-        <tag>ZooKeeper</tag>
         <tag>分布式</tag>
+        <tag>ZooKeeper</tag>
       </tags>
   </entry>
   <entry>
