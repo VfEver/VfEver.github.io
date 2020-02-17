@@ -100,7 +100,7 @@
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2020&#x2F;02&#x2F;10&#x2F;redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E5%8E%9F%E7%90%86&#x2F;redis-dict-empty.png">
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2020&#x2F;02&#x2F;10&#x2F;redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E5%8E%9F%E7%90%86&#x2F;redis-dict-used.png">
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2020&#x2F;02&#x2F;10&#x2F;redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E5%8E%9F%E7%90%86&#x2F;redis-dict.png">
-<meta property="og:updated_time" content="2020-02-17T12:13:51.565Z">
+<meta property="og:updated_time" content="2020-02-17T12:31:40.655Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2020&#x2F;02&#x2F;10&#x2F;redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E5%8E%9F%E7%90%86&#x2F;redis-datatype.png">
 
@@ -498,7 +498,7 @@
 <li>当ht[0]包含的所有键值对都迁移到了ht[1]之后，ht[0]这时已经是一个空表，释放ht[0]，将ht[1]设置为ht[0]，并在ht[1]上新创建一个空白哈希表，为下次rehash作准备。</li>
 </ol>
 </li>
-<li><p>渐进式hash</p>
+<li><p>渐进式hash。为了避免rehash对服务器性能造成的影响，服务器并不是一次性将ht[0]里面所有的键值对全部rehash到ht[1]，而是分多次、渐进式地将ht[0]里面的键值对慢慢地rehash到ht[1]。渐进式哈希餐区分而治之的策略，将rehash键值对所需的计算工作均摊到对字典每个添加、删除、查找和更新的操作上，从而避免了集中式rehash而带来的庞大计算量。在执行rehash期间，rehashidx记录当前已经执行了rehash的原table下标。</p>
 </li>
 </ol>
 
