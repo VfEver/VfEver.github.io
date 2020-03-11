@@ -102,7 +102,8 @@
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2020&#x2F;02&#x2F;10&#x2F;redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E5%8E%9F%E7%90%86&#x2F;redis-dict.png">
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2020&#x2F;02&#x2F;10&#x2F;redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E5%8E%9F%E7%90%86&#x2F;skiplist.png">
 <meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2020&#x2F;02&#x2F;10&#x2F;redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E5%8E%9F%E7%90%86&#x2F;intset.png">
-<meta property="og:updated_time" content="2020-03-10T16:06:00.718Z">
+<meta property="og:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2020&#x2F;02&#x2F;10&#x2F;redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E5%8E%9F%E7%90%86&#x2F;ziplist.png">
+<meta property="og:updated_time" content="2020-03-11T15:51:50.242Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2020&#x2F;02&#x2F;10&#x2F;redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E5%8E%9F%E7%90%86&#x2F;redis-datatype.png">
 
@@ -535,6 +536,15 @@
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">unsigned</span> <span class="keyword">char</span> *<span class="title">ziplistNew</span><span class="params">(<span class="keyword">void</span>)</span> </span>&#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">2</span></pre></td><td class="code"><pre><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> bytes = ZIPLIST_HEADER_SIZE+ZIPLIST_END_SIZE;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">3</span></pre></td><td class="code"><pre><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">char</span> *zl = zmalloc(bytes);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">4</span></pre></td><td class="code"><pre><span class="line">    ZIPLIST_BYTES(zl) = intrev32ifbe(bytes);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">5</span></pre></td><td class="code"><pre><span class="line">    ZIPLIST_TAIL_OFFSET(zl) = intrev32ifbe(ZIPLIST_HEADER_SIZE);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">6</span></pre></td><td class="code"><pre><span class="line">    ZIPLIST_LENGTH(zl) = <span class="number">0</span>;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">7</span></pre></td><td class="code"><pre><span class="line">    zl[bytes<span class="number">-1</span>] = ZIP_END;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">8</span></pre></td><td class="code"><pre><span class="line">    <span class="keyword">return</span> zl;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">9</span></pre></td><td class="code"><pre><span class="line">&#125;</span></pre></td></tr></table></figure>
 
 <p>redis中的压缩列表没有明确的定义，通过<em>ziplistNew</em>创建一个新的<em>ziplist</em>，我们可以大致画出它的内存结构：</p>
+<p><img src="/2020/02/10/redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E5%8E%9F%E7%90%86/ziplist.png" alt="redis-ziplist"></p>
+<p>各个字段代表的含义如下：</p>
+<ol>
+<li>zlbytes：记录整个压缩列表占用的内存字节数，在对压缩列表进行内存重分配或者计算zlend位置时使用。</li>
+<li>zltail：记录压缩列表尾节点距离压缩列表起始地址有多少字节，通过这个字段可以计算出尾节点的位置。</li>
+<li>zlen：记录了压缩列表包含的节点数量。</li>
+<li>entryX：压缩列表的节点，真正保存数据。</li>
+<li>zlend：特殊值0xFF，用于标记压缩列表的末端。</li>
+</ol>
 
       
     </div>
