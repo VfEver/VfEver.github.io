@@ -147,6 +147,19 @@
 <li>entryX：压缩列表的节点，真正保存数据。</li>
 <li>zlend：特殊值0xFF，用于标记压缩列表的末端。</li>
 </ol>
+<p>节点entry构成如下图：</p>
+<p><img src="/2020/02/10/redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E5%8E%9F%E7%90%86/ziplist-entry.png" alt="redis-ziplist-entry"></p>
+<p>各个字段代表含义如下：</p>
+<ol>
+<li>previous_entry_length：记录了上一个节点的长度，字节为单位。</li>
+<li>encoding：记录了当前节点content保存的数据的类型（整数类型或者字节类型）以及长度。</li>
+<li>content：保存节点的值，可以是一个字节数组或者整数。类型和长度通过encoding决定。</li>
+</ol>
+<h4 id="3-6-2，重点回顾"><a href="#3-6-2，重点回顾" class="headerlink" title="3.6.2，重点回顾"></a>3.6.2，重点回顾</h4><ol>
+<li>压缩列表是一种顺序型的数据结构，为了节约内存。</li>
+<li>压缩列表用作列表list和哈希hash的底层实现之一。</li>
+<li>压缩列表可以包含多个节点，每个节点可以保存一个字节数组护着整数值。</li>
+</ol>
 ]]></content>
       <categories>
         <category>技术</category>
