@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Code">
 <meta property="og:description" content="一、redis对象1.1，介绍上文介绍了redis的数据结构，从底层源码入手，图示了redis底层用到的数据结构。实际上redis并没有直接用到上文提到的SDS、双端链表、字典、压缩链表等，而是基于这些数据结构创建了一个对象系统，这个系统包含了字符串对象、列表对象、哈希对象、集合对象和有序集合对象五种基本类型的对象，每种对象都用到了至少一种我们上文提到的数据结构。redis中的这个对象，可以简单理">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2020-03-14T15:37:22.918Z">
+<meta property="og:updated_time" content="2020-03-16T15:28:07.604Z">
 <meta name="twitter:card" content="summary">
 
 
@@ -428,6 +428,87 @@
 <td>“zset”</td>
 </tr>
 </tbody></table>
+<h3 id="2-2，编码和底层实现"><a href="#2-2，编码和底层实现" class="headerlink" title="2.2，编码和底层实现"></a>2.2，编码和底层实现</h3><p>对象的ptr指向了对象底层实现的数据结构，而这些数据结构则由encoding决定。encoding指定了底层数据结构的类型，也就是说明了这个对象是由什么数据结构实现的。不同类型的对象底层编码对应如下表：</p>
+<table>
+<thead>
+<tr>
+<th>对象类型</th>
+<th>编码</th>
+<th>对象</th>
+<th>object输出</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>REDIS_STRING</td>
+<td>REDIS_ENCODING_INT</td>
+<td>使用整数值实现的字符串对象</td>
+<td>int</td>
+</tr>
+<tr>
+<td>REDIS_STRING</td>
+<td>REDIS_ENCODING_EMBSTR</td>
+<td>使用embstr编码简单动态字符串实现的字符串对象</td>
+<td>embstr</td>
+</tr>
+<tr>
+<td>REDIS_STRING</td>
+<td>REDIS_ENCODING_RAW</td>
+<td>使用简单动态字符串实现的字符串对象</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>REDIS_LIST</td>
+<td>REDIS_ENCODING_ZIPLIST</td>
+<td>使用压缩列表实现的列表对象</td>
+<td>zippiest</td>
+</tr>
+<tr>
+<td>REDIS_LIST</td>
+<td>REDIS_ENCODING_LINKEDLIST</td>
+<td>使用双端链表实现的列表对象</td>
+<td>linked list</td>
+</tr>
+<tr>
+<td>REDIS_HASH</td>
+<td>REDIS_ENCODING_ZIPLIST</td>
+<td>使用压缩列表实现的哈希对象</td>
+<td>zippiest</td>
+</tr>
+<tr>
+<td>REDIS_HASH</td>
+<td>REDIS_ENCODING_HT</td>
+<td>使用字典实现的哈希对象</td>
+<td>hash table</td>
+</tr>
+<tr>
+<td>REDIS_SET</td>
+<td>REDIS_ENCODING_INTSET</td>
+<td>使用整数集合实现的集合对象</td>
+<td>inset</td>
+</tr>
+<tr>
+<td>REDIS_SET</td>
+<td>REDIS_ENCODING_HT</td>
+<td>使用字典实现的集合对象</td>
+<td>hash table</td>
+</tr>
+<tr>
+<td>REDIS_ZSET</td>
+<td>REDIS_ENCODING_ZIPLIST</td>
+<td>使用压缩列表实现的集合对象</td>
+<td>zippiest</td>
+</tr>
+<tr>
+<td>REDIS_ZSET</td>
+<td>REDIS_ENCODING_SKIPLIST</td>
+<td>使用跳跃表和字典实现的有序集合对象</td>
+<td>skiplist</td>
+</tr>
+</tbody></table>
+<p>我们可以使用命令<em>object encoding</em>（查看对象的encoding属性）简单实验一下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line">-- embstr编码简单动态字符串</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">2</span></pre></td><td class="code"><pre><span class="line"><span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span>:<span class="number">6379</span>&gt; <span class="built_in">set</span> name zys</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">3</span></pre></td><td class="code"><pre><span class="line">OK</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">4</span></pre></td><td class="code"><pre><span class="line"><span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span>:<span class="number">6379</span>&gt; object encoding name</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">5</span></pre></td><td class="code"><pre><span class="line"><span class="string">"embstr"</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">6</span></pre></td><td class="code"><pre><span class="line">-- 简单动态字符串</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">7</span></pre></td><td class="code"><pre><span class="line"><span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span>:<span class="number">6379</span>&gt; <span class="built_in">set</span> long_name <span class="string">"zhaoyansheng is very handsome.what do you think?"</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">8</span></pre></td><td class="code"><pre><span class="line">OK</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">9</span></pre></td><td class="code"><pre><span class="line"><span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span>:<span class="number">6379</span>&gt; object encoding long_name</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">10</span></pre></td><td class="code"><pre><span class="line"><span class="string">"raw"</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">11</span></pre></td><td class="code"><pre><span class="line">-- 整数值</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">12</span></pre></td><td class="code"><pre><span class="line"><span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span>:<span class="number">6379</span>&gt; <span class="built_in">set</span> num <span class="number">1</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">13</span></pre></td><td class="code"><pre><span class="line">OK</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">14</span></pre></td><td class="code"><pre><span class="line"><span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span>:<span class="number">6379</span>&gt; object encoding num</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">15</span></pre></td><td class="code"><pre><span class="line"><span class="string">"int"</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">16</span></pre></td><td class="code"><pre><span class="line"><span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span>:<span class="number">6379</span>&gt; sadd nums <span class="number">1</span> <span class="number">2</span> <span class="number">3</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">17</span></pre></td><td class="code"><pre><span class="line">(integer) <span class="number">3</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">18</span></pre></td><td class="code"><pre><span class="line"><span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span>:<span class="number">6379</span>&gt; object encoding nums</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">19</span></pre></td><td class="code"><pre><span class="line"><span class="string">"intset"</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">20</span></pre></td><td class="code"><pre><span class="line"><span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span>:<span class="number">6379</span>&gt; object encoding nums</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">21</span></pre></td><td class="code"><pre><span class="line"><span class="string">"hashtable"</span></span></pre></td></tr></table></figure>
+
+<p>通过测试我们可以知道，通过encoding来指定</p>
 
       
     </div>
@@ -646,7 +727,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、redis对象"><span class="nav-number">1.</span> <span class="nav-text">一、redis对象</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1，介绍"><span class="nav-number">1.1.</span> <span class="nav-text">1.1，介绍</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、对象的类型与编码"><span class="nav-number">2.</span> <span class="nav-text">二、对象的类型与编码</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1，对象的类型"><span class="nav-number">2.1.</span> <span class="nav-text">2.1，对象的类型</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、redis对象"><span class="nav-number">1.</span> <span class="nav-text">一、redis对象</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1，介绍"><span class="nav-number">1.1.</span> <span class="nav-text">1.1，介绍</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、对象的类型与编码"><span class="nav-number">2.</span> <span class="nav-text">二、对象的类型与编码</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1，对象的类型"><span class="nav-number">2.1.</span> <span class="nav-text">2.1，对象的类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2，编码和底层实现"><span class="nav-number">2.2.</span> <span class="nav-text">2.2，编码和底层实现</span></a></li></ol></li></ol></div>
             
 
           </div>
