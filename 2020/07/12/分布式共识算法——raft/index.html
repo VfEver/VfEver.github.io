@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Code">
 <meta property="og:description" content="一、前言提到分布式一致性的算法，我们会想到paxos和raft。paxos可以认为是分布式一致性解决措施的一个乌托邦，是一个实验产物，基于强大的理论基础。它理解难度高，实现起来困难且不好解耦，但是它解决了分布式架构下的一致性问题，为后续各类一致性算法提供了理论基础。本文我们主要探讨raft——一个易于理解的分布式共识算法。相比较于paxos而言，除了易于理解，它实现起来更加简单。 二、解决问题先讲">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2020-07-13T00:35:48.284Z">
+<meta property="og:updated_time" content="2020-07-16T15:55:01.982Z">
 <meta name="twitter:card" content="summary">
 
 
@@ -388,6 +388,7 @@
 <h2 id="二、解决问题"><a href="#二、解决问题" class="headerlink" title="二、解决问题"></a>二、解决问题</h2><p>先讲为什么需要分布式系统。在现在复杂的软件架构时代，实现整体系统的稳定性和高可用性一个关键且有效的措施就是冗余存储，也就是单节点存储变为多节点且异地。每个节点拥有整个节点能力，且整个节点网络在其中某个节点宕机或者网络错误等一些错误出现时，能够正确保证输入输出，对整体的系统能力没有损耗。</p>
 <p>但是这样也引发了其他问题那就是冗余存储的情况下，如何保证节点间数据的一致性。数据多份存储，在不采取任何一致性的措施下，势必会造成节点间数据冲突、丢失的问题。再讲明确一点就是，如何让多节点针对同一份数据达成共识，都是认可这份数据；也就是本节点存储的数据即为全部数据，和其他节点一样。除了上文提到了晦涩难懂的paxos，raft就是解决这类问题的一致性算法。</p>
 <p>本文将通过原则、推论和示例等几个方面，一起探讨raft的一致性原理。</p>
+<h2 id="三、raft设计"><a href="#三、raft设计" class="headerlink" title="三、raft设计"></a>三、raft设计</h2><p>在一个分布式系统中,假设一个系统模块由五个节点组成,在对外提供服务的时候,假设五个节点同时提供服务,每个节点都对外提供服务,负责响应客户端的读写.这是一个比较初级的分布式系统,即使其中的某几个节点挂了,另外几个几个节点能够正常提供服务.但是存在一个明显的问题,就是数据一致性的问题.每个节点都各自对外提供服务,那么相互之间的数据肯定不一致.有的同学可能会讲,可以使用共享存储.对的,只要使用同一份存储,各个节点之间读取同一份存储,那么问题就解决了.但是这就引发了另外</p>
 
       
     </div>
@@ -606,7 +607,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、前言"><span class="nav-number">1.</span> <span class="nav-text">一、前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、解决问题"><span class="nav-number">2.</span> <span class="nav-text">二、解决问题</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、前言"><span class="nav-number">1.</span> <span class="nav-text">一、前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、解决问题"><span class="nav-number">2.</span> <span class="nav-text">二、解决问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、raft设计"><span class="nav-number">3.</span> <span class="nav-text">三、raft设计</span></a></li></ol></div>
             
 
           </div>
