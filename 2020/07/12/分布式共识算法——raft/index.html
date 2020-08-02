@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Code">
 <meta property="og:description" content="一、前言提到分布式一致性的算法，我们会想到paxos和raft。paxos可以认为是分布式一致性解决措施的一个乌托邦，是一个实验产物，基于强大的理论基础。它理解难度高，实现起来困难且不好解耦，但是它解决了分布式架构下的一致性问题，为后续各类一致性算法提供了理论基础。本文我们主要探讨raft——一个易于理解的分布式共识算法。相比较于paxos而言，除了易于理解，它实现起来更加简单。 二、解决问题先讲">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2020-07-30T16:08:19.169Z">
+<meta property="og:updated_time" content="2020-08-02T07:51:56.487Z">
 <meta name="twitter:card" content="summary">
 
 
@@ -399,6 +399,14 @@
 <li>安全性保证</li>
 </ol>
 <p>通过解决这三个子问题来完成整个集群的一致性保证。下面我们就分三个章节来分别讨论每个子问题是如何被解决的。</p>
+<h2 id="四、raft名词概念"><a href="#四、raft名词概念" class="headerlink" title="四、raft名词概念"></a>四、raft名词概念</h2><p>在讲解raft为解决三个子问题之前，我们先将其中涉及到的名词整理解释一下，方便后续理解。</p>
+<h3 id="4-1，角色概念"><a href="#4-1，角色概念" class="headerlink" title="4.1，角色概念"></a>4.1，角色概念</h3><ul>
+<li>leader：集群中的领导者。负责响应客户端的请求、集群中其他节点的日志同步以及节点心跳检测等。</li>
+<li>follower：集群中的跟随者。负责接收leader的日志请求、心跳检测以及leader选举投票等。</li>
+<li>candidate：集群中的候选者。候选者是跟随者在集群中没有leader或者接受不到leader的心跳之后转化成候选者，参与leader的选举。只有candidate才能参与选举，follower负责投票。</li>
+</ul>
+<p>整个集群有三种角色，也就是我们提到的leader、follower、candidate。集群刚启动或者leader挂了的时候，follower会转变成candidate，然后获取大多数投票权成为leader。三种角色的转化关系如下：</p>
+<h3 id="4-2，日志和状态机"><a href="#4-2，日志和状态机" class="headerlink" title="4.2，日志和状态机"></a>4.2，日志和状态机</h3><p>我们把客户端的请求以及集群处理的数据统一称之为日志。客户端请求设置<em>x=3</em>，集群leader接收到本次请求，将本次请求保存到本地，并复制给集群中的大多数。我们将这种请求以及处理称之为日志和应用状态机。这么讲还是比较模糊，其实本质可以这么简单理解：客户端将集群认为是一个可靠存储，需要集群保存一个数据或者某个状态；集群简单认为不管让它存储什么都是一个日志；然后每次日志的存储，都是集群中leader和大多数都保存到自身存储里面，而这个自身存储我们叫他状态机。按序请求并且持续存储，也就是应用状态机迁移。这里可以发现，状态机是基于日志的，而集群中日志是由leader复制到大多数机器节点的，所以日志复制和状态机应用是比较关键的两个步骤，我们后续会分阶段解释两个步骤是怎么处理的。</p>
 
       
     </div>
@@ -617,7 +625,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、前言"><span class="nav-number">1.</span> <span class="nav-text">一、前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、解决问题"><span class="nav-number">2.</span> <span class="nav-text">二、解决问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、raft设计"><span class="nav-number">3.</span> <span class="nav-text">三、raft设计</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、前言"><span class="nav-number">1.</span> <span class="nav-text">一、前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、解决问题"><span class="nav-number">2.</span> <span class="nav-text">二、解决问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、raft设计"><span class="nav-number">3.</span> <span class="nav-text">三、raft设计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四、raft名词概念"><span class="nav-number">4.</span> <span class="nav-text">四、raft名词概念</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1，角色概念"><span class="nav-number">4.1.</span> <span class="nav-text">4.1，角色概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2，日志和状态机"><span class="nav-number">4.2.</span> <span class="nav-text">4.2，日志和状态机</span></a></li></ol></li></ol></div>
             
 
           </div>
