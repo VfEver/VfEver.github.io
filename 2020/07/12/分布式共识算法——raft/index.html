@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Code">
 <meta property="og:description" content="一、前言提到分布式一致性的算法，我们会想到paxos和raft。paxos可以认为是分布式一致性解决措施的一个乌托邦，是一个实验产物，基于强大的理论基础。它理解难度高，实现起来困难且不好解耦，但是它解决了分布式架构下的一致性问题，为后续各类一致性算法提供了理论基础。本文我们主要探讨raft——一个易于理解的分布式共识算法。相比较于paxos而言，除了易于理解，它实现起来更加简单。 二、解决问题先讲">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2020-08-02T07:51:56.487Z">
+<meta property="og:updated_time" content="2020-08-02T14:59:28.012Z">
 <meta name="twitter:card" content="summary">
 
 
@@ -406,7 +406,153 @@
 <li>candidate：集群中的候选者。候选者是跟随者在集群中没有leader或者接受不到leader的心跳之后转化成候选者，参与leader的选举。只有candidate才能参与选举，follower负责投票。</li>
 </ul>
 <p>整个集群有三种角色，也就是我们提到的leader、follower、candidate。集群刚启动或者leader挂了的时候，follower会转变成candidate，然后获取大多数投票权成为leader。三种角色的转化关系如下：</p>
-<h3 id="4-2，日志和状态机"><a href="#4-2，日志和状态机" class="headerlink" title="4.2，日志和状态机"></a>4.2，日志和状态机</h3><p>我们把客户端的请求以及集群处理的数据统一称之为日志。客户端请求设置<em>x=3</em>，集群leader接收到本次请求，将本次请求保存到本地，并复制给集群中的大多数。我们将这种请求以及处理称之为日志和应用状态机。这么讲还是比较模糊，其实本质可以这么简单理解：客户端将集群认为是一个可靠存储，需要集群保存一个数据或者某个状态；集群简单认为不管让它存储什么都是一个日志；然后每次日志的存储，都是集群中leader和大多数都保存到自身存储里面，而这个自身存储我们叫他状态机。按序请求并且持续存储，也就是应用状态机迁移。这里可以发现，状态机是基于日志的，而集群中日志是由leader复制到大多数机器节点的，所以日志复制和状态机应用是比较关键的两个步骤，我们后续会分阶段解释两个步骤是怎么处理的。</p>
+<h3 id="4-2，日志和状态机"><a href="#4-2，日志和状态机" class="headerlink" title="4.2，日志和状态机"></a>4.2，日志和状态机</h3><p>我们把客户端的请求以及集群处理的数据统一称之为日志。客户端请求设置<em>x=3</em>，集群leader接收到本次请求，将本次请求保存到本地，并复制给集群中的大多数。我们将这种请求以及处理称之为日志和应用状态机。这么讲还是比较模糊，其实本质可以这么简单理解：客户端将集群认为是一个可靠存储，需要集群保存一个数据或者某个状态；集群简单认为不管让它存储什么都是一个日志；然后每次日志的存储，都是集群中leader和大多数都保存到自身存储里面，而这个自身存储我们叫他状态机。按序请求并且持续存储，也就是应用状态机迁移。</p>
+<p>这里可以发现，状态机是基于日志的，而集群中日志是由leader复制到大多数机器节点的，所以日志复制和状态机应用是比较关键的两个步骤，我们后续会分阶段解释两个步骤是怎么处理的。</p>
+<h3 id="4-3，数据术语"><a href="#4-3，数据术语" class="headerlink" title="4.3，数据术语"></a>4.3，数据术语</h3><p>除了上述我们提到的角色、日志和状态机，在集群中通信以及数据存储的一些数据术语，我们也简单介绍一下。</p>
+<ul>
+<li>term：任期。集群将整个生命划分为一个一个的时间片段，一个时间片段称之为一个任期。每个任期有唯一一个集群leader（或者没有选举出leader）来负责整个任期中响应客户端请求、日志复制以及心跳检测的工作。</li>
+<li>RPC：通信方式。这个指的是集群之间节点（leader和follower以及candidate和follower）通信方式是通过RPC交互。包括领导人选举、日志复制和心跳检测等等。</li>
+</ul>
+<h4 id="4-3-1，在集群机器中永久存在的"><a href="#4-3-1，在集群机器中永久存在的" class="headerlink" title="4.3.1，在集群机器中永久存在的"></a>4.3.1，在集群机器中永久存在的</h4><table>
+<thead>
+<tr>
+<th>术语</th>
+<th>释义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>currentTerm</td>
+<td>服务器最后一次知道的任期号</td>
+</tr>
+<tr>
+<td>votedFor</td>
+<td>当前获得选票的候选人ID</td>
+</tr>
+<tr>
+<td>log[]</td>
+<td>服务器日志条目集合；每个日志条目包含了用户执行的状态机指令和当时的任期号</td>
+</tr>
+</tbody></table>
+<h4 id="4-3-2，服务器上经常变更的"><a href="#4-3-2，服务器上经常变更的" class="headerlink" title="4.3.2，服务器上经常变更的"></a>4.3.2，服务器上经常变更的</h4><table>
+<thead>
+<tr>
+<th>术语</th>
+<th>释义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>currentTerm</td>
+<td>已知的最大的已经提交的日志条目索引值</td>
+</tr>
+<tr>
+<td>votedFor</td>
+<td>最后被应用到状态机的日志条目索引值（初始化为 0，持续递增）</td>
+</tr>
+</tbody></table>
+<h4 id="4-3-3，领导人经常变更的"><a href="#4-3-3，领导人经常变更的" class="headerlink" title="4.3.3，领导人经常变更的"></a>4.3.3，领导人经常变更的</h4><table>
+<thead>
+<tr>
+<th>术语</th>
+<th>释义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>nextIndex[]</td>
+<td>对于每一个服务器，需要发送给他的下一个日志条目的索引值（初始化为领导人最后索引值加一）</td>
+</tr>
+<tr>
+<td>matchIndex[]</td>
+<td>对于每一个服务器，已经复制给他的日志的最高索引值</td>
+</tr>
+</tbody></table>
+<h4 id="4-3-4，附加日志RPC（心跳检测）"><a href="#4-3-4，附加日志RPC（心跳检测）" class="headerlink" title="4.3.4，附加日志RPC（心跳检测）"></a>4.3.4，附加日志RPC（心跳检测）</h4><table>
+<thead>
+<tr>
+<th>术语</th>
+<th>释义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>term</td>
+<td>领导人的任期号</td>
+</tr>
+<tr>
+<td>leaderId</td>
+<td>领导人的 Id，以便于跟随者重定向请求</td>
+</tr>
+<tr>
+<td>prevLogIndex</td>
+<td>新的日志条目紧随之前的索引值</td>
+</tr>
+<tr>
+<td>prevLogTerm</td>
+<td>prevLogIndex 条目的任期号</td>
+</tr>
+<tr>
+<td>entries[]</td>
+<td>准备存储的日志条目（表示心跳时为空；一次性发送多个是为了提高效率）</td>
+</tr>
+<tr>
+<td>leaderCommit</td>
+<td>领导人已经提交的日志的索引值</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>返回值</th>
+<th>释义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>term</td>
+<td>当前的任期号，用于领导人去更新自己</td>
+</tr>
+<tr>
+<td>success</td>
+<td>跟随者包含了匹配上 prevLogIndex 和 prevLogTerm 的日志时为真</td>
+</tr>
+</tbody></table>
+<h4 id="4-3-5，请求投票-RPC"><a href="#4-3-5，请求投票-RPC" class="headerlink" title="4.3.5，请求投票 RPC"></a>4.3.5，请求投票 RPC</h4><table>
+<thead>
+<tr>
+<th>请求参数</th>
+<th>释义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>term</td>
+<td>候选人的任期号</td>
+</tr>
+<tr>
+<td>candidateId</td>
+<td>请求选票的候选人的 Id</td>
+</tr>
+<tr>
+<td>lastLogIndex</td>
+<td>候选人的最后日志条目的索引值</td>
+</tr>
+<tr>
+<td>lastLogTerm</td>
+<td>候选人最后日志条目的任期号</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>返回值</th>
+<th>释义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>term</td>
+<td>当前任期号，以便于候选人去更新自己的任期号</td>
+</tr>
+<tr>
+<td>voteGranted</td>
+<td>候选人赢得了此张选票时为真</td>
+</tr>
+</tbody></table>
 
       
     </div>
@@ -625,7 +771,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、前言"><span class="nav-number">1.</span> <span class="nav-text">一、前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、解决问题"><span class="nav-number">2.</span> <span class="nav-text">二、解决问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、raft设计"><span class="nav-number">3.</span> <span class="nav-text">三、raft设计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四、raft名词概念"><span class="nav-number">4.</span> <span class="nav-text">四、raft名词概念</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1，角色概念"><span class="nav-number">4.1.</span> <span class="nav-text">4.1，角色概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2，日志和状态机"><span class="nav-number">4.2.</span> <span class="nav-text">4.2，日志和状态机</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、前言"><span class="nav-number">1.</span> <span class="nav-text">一、前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、解决问题"><span class="nav-number">2.</span> <span class="nav-text">二、解决问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、raft设计"><span class="nav-number">3.</span> <span class="nav-text">三、raft设计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四、raft名词概念"><span class="nav-number">4.</span> <span class="nav-text">四、raft名词概念</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1，角色概念"><span class="nav-number">4.1.</span> <span class="nav-text">4.1，角色概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2，日志和状态机"><span class="nav-number">4.2.</span> <span class="nav-text">4.2，日志和状态机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3，数据术语"><span class="nav-number">4.3.</span> <span class="nav-text">4.3，数据术语</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#4-3-1，在集群机器中永久存在的"><span class="nav-number">4.3.1.</span> <span class="nav-text">4.3.1，在集群机器中永久存在的</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-3-2，服务器上经常变更的"><span class="nav-number">4.3.2.</span> <span class="nav-text">4.3.2，服务器上经常变更的</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-3-3，领导人经常变更的"><span class="nav-number">4.3.3.</span> <span class="nav-text">4.3.3，领导人经常变更的</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-3-4，附加日志RPC（心跳检测）"><span class="nav-number">4.3.4.</span> <span class="nav-text">4.3.4，附加日志RPC（心跳检测）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-3-5，请求投票-RPC"><span class="nav-number">4.3.5.</span> <span class="nav-text">4.3.5，请求投票 RPC</span></a></li></ol></li></ol></li></ol></div>
             
 
           </div>
