@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Code">
 <meta property="og:description" content="一、前言提到分布式一致性的算法，我们会想到paxos和raft。paxos可以认为是分布式一致性解决措施的一个乌托邦，是一个实验产物，基于强大的理论基础。它理解难度高，实现起来困难且不好解耦，但是它解决了分布式架构下的一致性问题，为后续各类一致性算法提供了理论基础。本文我们主要探讨raft——一个易于理解的分布式共识算法。相比较于paxos而言，除了易于理解，它实现起来更加简单。 二、解决问题先讲">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2020-08-02T14:59:28.012Z">
+<meta property="og:updated_time" content="2020-08-05T14:49:28.400Z">
 <meta name="twitter:card" content="summary">
 
 
@@ -441,11 +441,11 @@
 </tr>
 </thead>
 <tbody><tr>
-<td>currentTerm</td>
-<td>已知的最大的已经提交的日志条目索引值</td>
+<td>commitIndex</td>
+<td>已知的最大的已经被提交的日志条目的索引值</td>
 </tr>
 <tr>
-<td>votedFor</td>
+<td>lastApplied</td>
 <td>最后被应用到状态机的日志条目索引值（初始化为 0，持续递增）</td>
 </tr>
 </tbody></table>
@@ -513,6 +513,14 @@
 <td>跟随者包含了匹配上 prevLogIndex 和 prevLogTerm 的日志时为真</td>
 </tr>
 </tbody></table>
+<p>follower需要做的是</p>
+<ol>
+<li>如果 <code>term &lt; currentTerm</code> 就返回 false</li>
+<li>如果日志在 prevLogIndex 位置处的日志条目的任期号和 prevLogTerm 不匹配，则返回 false （5.3 节）</li>
+<li>如果已经存在的日志条目和新的产生冲突（索引值相同但是任期号不同），删除这一条和之后所有的</li>
+<li>附加日志中尚未存在的任何新条目</li>
+<li>如果 <code>leaderCommit &gt; commitIndex</code>，令 commitIndex 等于 leaderCommit 和 新日志条目索引值中较小的一个</li>
+</ol>
 <h4 id="4-3-5，请求投票-RPC"><a href="#4-3-5，请求投票-RPC" class="headerlink" title="4.3.5，请求投票 RPC"></a>4.3.5，请求投票 RPC</h4><table>
 <thead>
 <tr>
@@ -553,6 +561,41 @@
 <td>候选人赢得了此张选票时为真</td>
 </tr>
 </tbody></table>
+<p>接收者实现：</p>
+<ol>
+<li>如果<code>term &lt; currentTerm</code>返回 false</li>
+<li>如果 votedFor 为空或者为 candidateId，并且候选人的日志至少和自己一样新，那么就投票给他</li>
+</ol>
+<h2 id="五、raft约束"><a href="#五、raft约束" class="headerlink" title="五、raft约束"></a>五、raft约束</h2><h3 id="5-1，所有服务器"><a href="#5-1，所有服务器" class="headerlink" title="5.1，所有服务器"></a>5.1，所有服务器</h3><ul>
+<li>如果<code>commitIndex &gt; lastApplied</code>，那么就 lastApplied 加一，并把<code>log[lastApplied]</code>应用到状态机中</li>
+<li>如果接收到的 RPC 请求或响应中，任期号<code>T &gt; currentTerm</code>，那么就令 currentTerm 等于 T，并切换状态为跟随者</li>
+</ul>
+<h3 id="5-2，follower"><a href="#5-2，follower" class="headerlink" title="5.2，follower"></a>5.2，follower</h3><ul>
+<li>响应来自候选人和领导者的请求</li>
+<li>如果在超过选举超时时间的情况之前没有收到<strong>当前领导人</strong>（即该领导人的任期需与这个跟随者的当前任期相同）的心跳/附加日志，或者是给某个候选人投了票，就自己变成候选人</li>
+</ul>
+<h3 id="5-3，candidate"><a href="#5-3，candidate" class="headerlink" title="5.3，candidate"></a>5.3，candidate</h3><ul>
+<li>在转变成候选人后就立即开始选举过程<ul>
+<li>自增当前的任期号（currentTerm）</li>
+<li>给自己投票</li>
+<li>重置选举超时计时器</li>
+<li>发送请求投票的 RPC 给其他所有服务器</li>
+</ul>
+</li>
+<li>如果接收到大多数服务器的选票，那么就变成领导人</li>
+<li>如果接收到来自新的领导人的附加日志 RPC，转变成跟随者</li>
+<li>如果选举过程超时，再次发起一轮选举</li>
+</ul>
+<h3 id="5-4，leader"><a href="#5-4，leader" class="headerlink" title="5.4，leader"></a>5.4，leader</h3><ul>
+<li>一旦成为领导人：发送空的附加日志 RPC（心跳）给其他所有的服务器；在一定的空余时间之后不停的重复发送，以阻止跟随者超时</li>
+<li>如果接收到来自客户端的请求：附加条目到本地日志中，在条目被应用到状态机后响应客户端</li>
+<li>如果对于一个跟随者，最后日志条目的索引值大于等于 nextIndex，那么：发送从 nextIndex 开始的所有日志条目：<ul>
+<li>如果成功：更新相应跟随者的 nextIndex 和 matchIndex</li>
+<li>如果因为日志不一致而失败，减少 nextIndex 重试</li>
+</ul>
+</li>
+<li>如果存在一个满足<code>N &gt; commitIndex</code>的 N，并且大多数的<code>matchIndex[i] ≥ N</code>成立，并且<code>log[N].term == currentTerm</code>成立，那么令 commitIndex 等于这个 N </li>
+</ul>
 
       
     </div>
@@ -771,7 +814,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、前言"><span class="nav-number">1.</span> <span class="nav-text">一、前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、解决问题"><span class="nav-number">2.</span> <span class="nav-text">二、解决问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、raft设计"><span class="nav-number">3.</span> <span class="nav-text">三、raft设计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四、raft名词概念"><span class="nav-number">4.</span> <span class="nav-text">四、raft名词概念</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1，角色概念"><span class="nav-number">4.1.</span> <span class="nav-text">4.1，角色概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2，日志和状态机"><span class="nav-number">4.2.</span> <span class="nav-text">4.2，日志和状态机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3，数据术语"><span class="nav-number">4.3.</span> <span class="nav-text">4.3，数据术语</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#4-3-1，在集群机器中永久存在的"><span class="nav-number">4.3.1.</span> <span class="nav-text">4.3.1，在集群机器中永久存在的</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-3-2，服务器上经常变更的"><span class="nav-number">4.3.2.</span> <span class="nav-text">4.3.2，服务器上经常变更的</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-3-3，领导人经常变更的"><span class="nav-number">4.3.3.</span> <span class="nav-text">4.3.3，领导人经常变更的</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-3-4，附加日志RPC（心跳检测）"><span class="nav-number">4.3.4.</span> <span class="nav-text">4.3.4，附加日志RPC（心跳检测）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-3-5，请求投票-RPC"><span class="nav-number">4.3.5.</span> <span class="nav-text">4.3.5，请求投票 RPC</span></a></li></ol></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、前言"><span class="nav-number">1.</span> <span class="nav-text">一、前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、解决问题"><span class="nav-number">2.</span> <span class="nav-text">二、解决问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、raft设计"><span class="nav-number">3.</span> <span class="nav-text">三、raft设计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四、raft名词概念"><span class="nav-number">4.</span> <span class="nav-text">四、raft名词概念</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1，角色概念"><span class="nav-number">4.1.</span> <span class="nav-text">4.1，角色概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2，日志和状态机"><span class="nav-number">4.2.</span> <span class="nav-text">4.2，日志和状态机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3，数据术语"><span class="nav-number">4.3.</span> <span class="nav-text">4.3，数据术语</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#4-3-1，在集群机器中永久存在的"><span class="nav-number">4.3.1.</span> <span class="nav-text">4.3.1，在集群机器中永久存在的</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-3-2，服务器上经常变更的"><span class="nav-number">4.3.2.</span> <span class="nav-text">4.3.2，服务器上经常变更的</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-3-3，领导人经常变更的"><span class="nav-number">4.3.3.</span> <span class="nav-text">4.3.3，领导人经常变更的</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-3-4，附加日志RPC（心跳检测）"><span class="nav-number">4.3.4.</span> <span class="nav-text">4.3.4，附加日志RPC（心跳检测）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-3-5，请求投票-RPC"><span class="nav-number">4.3.5.</span> <span class="nav-text">4.3.5，请求投票 RPC</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#五、raft约束"><span class="nav-number">5.</span> <span class="nav-text">五、raft约束</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1，所有服务器"><span class="nav-number">5.1.</span> <span class="nav-text">5.1，所有服务器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2，follower"><span class="nav-number">5.2.</span> <span class="nav-text">5.2，follower</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3，candidate"><span class="nav-number">5.3.</span> <span class="nav-text">5.3，candidate</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-4，leader"><span class="nav-number">5.4.</span> <span class="nav-text">5.4，leader</span></a></li></ol></li></ol></div>
             
 
           </div>
